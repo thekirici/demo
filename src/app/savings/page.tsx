@@ -14,92 +14,120 @@ const currencySymbols: { [key: string]: string } = {
     EUR: "€",
 };
 
-const SavingsGoalCalculator = () => {
-    const [targetAmount, setTargetAmount] = useState('');
-    const [initialAmount, setInitialAmount] = useState('');
-    const [years, setYears] = useState('');
-    const [monthlySaving, setMonthlySaving] = useState<number | null>(null);
-    const [selectedCurrency, setSelectedCurrency] = useState('TRY');
+const SavingsPage = () => {
+  const [targetAmount, setTargetAmount] = useState('');
+  const [monthlyContribution, setMonthlyContribution] = useState('');
+  const [annualInterestRate, setAnnualInterestRate] = useState('');
+  const [timeToGoal, setTimeToGoal] = useState<number | null>(null);
+  const [totalSavings, setTotalSavings] = useState<number | null>(null);
+  const [totalInterest, setTotalInterest] = useState<number | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState('TRY');
 
-    const handleCalculate = () => {
-        const target = parseFloat(targetAmount);
-        const initial = parseFloat(initialAmount) || 0;
-        const termInMonths = parseInt(years) * 12;
+  const handleCalculate = () => {
+    const P = parseFloat(monthlyContribution);
+    const A = parseFloat(targetAmount);
+    const r = parseFloat(annualInterestRate) / 100 / 12;
 
-        if (target > initial && termInMonths > 0) {
-            const requiredSavings = (target - initial) / termInMonths;
-            setMonthlySaving(requiredSavings);
-        } else {
-            setMonthlySaving(null);
-        }
-    };
+    if (A > 0 && P > 0 && r > 0) {
+      const n = Math.log((A * r / P) + 1) / Math.log(1 + r);
+      const totalSaved = P * n;
+      setTimeToGoal(n);
+      setTotalSavings(A);
+      setTotalInterest(A - totalSaved);
+    } else {
+      setTimeToGoal(null);
+      setTotalSavings(null);
+      setTotalInterest(null);
+    }
+  };
 
-    const symbol = currencySymbols[selectedCurrency];
+  const symbol = currencySymbols[selectedCurrency];
 
-    return (
-        <div className="container mx-auto p-4 flex justify-center">
-            <Card className="w-full max-w-md p-4">
-                <CardHeader>
-                    <h1 className="text-2xl font-bold text-center">Birikim Hedefi Hesaplayıcı</h1>
-                </CardHeader>
-                <CardBody className="flex flex-col gap-4">
-                    <Input
-                        type="number"
-                        label="Hedef Tutar"
-                        placeholder="0.00"
-                        value={targetAmount}
-                        onValueChange={setTargetAmount}
-                        startContent={
-                            <Select
-                                size="sm"
-                                aria-label="Currency"
-                                selectedKeys={[selectedCurrency]}
-                                onChange={(e) => setSelectedCurrency(e.target.value)}
-                                className="w-24"
-                            >
-                                {currencies.map((currency) => (
-                                    <SelectItem key={currency.key}>
-                                        {currency.label}
-                                    </SelectItem>
-                                ))}
-                            </Select>
-                        }
-                    />
-
-                    <Input
-                        type="number"
-                        label="Mevcut Birikim (İsteğe Bağlı)"
-                        placeholder="0.00"
-                        value={initialAmount}
-                        onValueChange={setInitialAmount}
-                        startContent={<div className="pointer-events-none flex items-center"><span className="text-default-400 text-small">{symbol}</span></div>}
-                    />
-
-                    <Input
-                        type="number"
-                        label="Hedef Süresi (Yıl)"
-                        placeholder="Örn: 3"
-                        value={years}
-                        onValueChange={setYears}
-                    />
-
-                    <Button color="primary" onClick={handleCalculate} size="lg">
-                        Hesapla
-                    </Button>
-
-                    {monthlySaving !== null && (
-                        <div className="mt-4 p-4 bg-default-100 rounded-lg">
-                            <h2 className="text-xl font-bold mb-2">Hedefinize Ulaşmak İçin</h2>
-                            <div className="flex justify-between">
-                                <p>Gereken Aylık Birikim:</p>
-                                <p className="font-semibold">{symbol}{monthlySaving.toFixed(2)}</p>
-                            </div>
-                        </div>
-                    )}
-                </CardBody>
-            </Card>
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="md:w-1/2">
+          <Card className="p-4">
+            <CardHeader>
+              <h1 className="text-2xl font-bold text-center">Tasarruf Planlayıcı</h1>
+            </CardHeader>
+            <CardBody className="flex flex-col gap-4">
+              <Input
+                type="number"
+                label="Hedef Tutar"
+                placeholder="0.00"
+                value={targetAmount}
+                onValueChange={setTargetAmount}
+                startContent={
+                    <Select
+                        size="sm"
+                        aria-label="Currency"
+                        selectedKeys={[selectedCurrency]}
+                        onChange={(e) => setSelectedCurrency(e.target.value)}
+                        className="w-24"
+                    >
+                        {currencies.map((currency) => (
+                            <SelectItem key={currency.key}>
+                                {currency.label}
+                            </SelectItem>
+                        ))}
+                    </Select>
+                }
+              />
+              <Input
+                type="number"
+                label="Aylık Birikim"
+                placeholder="0.00"
+                value={monthlyContribution}
+                onValueChange={setMonthlyContribution}
+                startContent={
+                    <span className="text-default-400 text-small">{symbol}</span>
+                }
+              />
+              <Input
+                type="number"
+                label="Yıllık Faiz Oranı"
+                placeholder="0.00"
+                value={annualInterestRate}
+                onValueChange={setAnnualInterestRate}
+                endContent={
+                  <div className="pointer-events-none flex items-center">
+                    <span className="text-default-400 text-small">%</span>
+                  </div>
+                }
+              />
+              <Button color="primary" onClick={handleCalculate} size="lg">
+                Hesapla
+              </Button>
+            </CardBody>
+          </Card>
         </div>
-    );
+        <div className="md:w-1/2">
+          {timeToGoal !== null && totalSavings !== null && totalInterest !== null && (
+            <Card className="p-4 h-full">
+              <CardHeader>
+                <h2 className="text-2xl font-bold text-center">Sonuçlar</h2>
+              </CardHeader>
+              <CardBody className="flex flex-col justify-center items-center gap-4">
+                <div className="text-center">
+                  <p className="text-lg text-default-500">Hedefe Ulaşma Süresi</p>
+                  <p className="text-4xl font-bold">{(timeToGoal / 12).toFixed(1)} yıl ({timeToGoal.toFixed(0)} ay)</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg text-default-500">Toplam Faiz Getirisi</p>
+                  <p className="text-4xl font-bold">{symbol}{totalInterest.toFixed(2)}</p>
+                </div>
+                 <div className="text-center">
+                  <p className="text-lg text-default-500">Toplam Birikim</p>
+                  <p className="text-4xl font-bold">{symbol}{totalSavings.toFixed(2)}</p>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default SavingsGoalCalculator;
+export default SavingsPage;
