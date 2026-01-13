@@ -1,135 +1,138 @@
 "use client";
-import React, { useState } from 'react';
-import {Input, Button, Card, CardBody, CardHeader, Select, SelectItem} from "@heroui/react";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Input, Button, Card, CardBody, Select, SelectItem } from "@heroui/react";
 
-const loanTypes = [
-  {key: "ihtiyac", label: "İhtiyaç Kredisi"},
-  {key: "konut", label: "Konut Kredisi"},
-  {key: "tasit", label: "Taşıt Kredisi"},
+// Farklı faiz oranlarına sahip sahte banka verileri
+const bankOffers = [
+  { name: "FinansPro Bank", interestRate: 3.59 },
+  { name: "Kolay Kredi Bankası", interestRate: 3.75 },
+  { name: "Gelecek Bank", interestRate: 4.10 },
+  { name: "Hızlı Finans", interestRate: 4.25 },
 ];
 
-const currencies = [
-    {key: "TRY", label: "₺ (TL)"},
-    {key: "USD", label: "$ (USD)"},
-    {key: "EUR", label: "€ (EUR)"},
-];
+// Hesaplanmış bir teklif için tür tanımı
+interface CalculatedOffer {
+  name: string;
+  interestRate: number;
+  monthlyPayment: number;
+  totalPayment: number;
+}
 
-const currencySymbols: { [key: string]: string } = {
-    TRY: "₺",
-    USD: "$",
-    EUR: "€",
-};
+// 1'den 36'ya kadar olan kredi vadeleri için bir dizi oluştur
+const loanTerms = Array.from({ length: 36 }, (_, i) => ({ key: (i + 1).toString(), label: `${i + 1} Ay` }));
 
 const CreditPage = () => {
-  const [loanAmount, setLoanAmount] = useState('');
-  const [interestRate, setInterestRate] = useState('');
-  const [loanTerm, setLoanTerm] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState<number | null>(null);
-  const [totalPayment, setTotalPayment] = useState<number | null>(null);
-  const [selectedCurrency, setSelectedCurrency] = useState('TRY');
+  const [loanAmount, setLoanAmount] = useState('50000');
+  const [loanTerm, setLoanTerm] = useState('12'); // Varsayılan olarak 12 ay
+  const [calculatedResults, setCalculatedResults] = useState<CalculatedOffer[]>([]);
 
-  const handleCalculate = () => {
+  const handleCalculate = useCallback(() => {
     const P = parseFloat(loanAmount);
-    const annualInterestRate = parseFloat(interestRate);
-    const r = annualInterestRate / 100 / 12;
-    const n = parseInt(loanTerm) * 12;
+    const n = parseInt(loanTerm);
 
-    if (P > 0 && r > 0 && n > 0) {
-      const M = (P * (r * Math.pow(1 + r, n))) / (Math.pow(1 + r, n) - 1);
-      setMonthlyPayment(M);
-      setTotalPayment(M * n);
+    if (P > 0 && n > 0) {
+      const results = bankOffers.map(offer => {
+        const r = offer.interestRate / 100 / 12; // Aylık faiz oranı
+        // Aylık ödeme formülü
+        const M = (P * (r * Math.pow(1 + r, n))) / (Math.pow(1 + r, n) - 1);
+        const totalPayment = M * n;
+        return {
+          ...offer,
+          monthlyPayment: M,
+          totalPayment: totalPayment,
+        };
+      });
+      setCalculatedResults(results);
     } else {
-      setMonthlyPayment(null);
-      setTotalPayment(null);
+      setCalculatedResults([]);
     }
-  };
+  }, [loanAmount, loanTerm]);
 
-  const symbol = currencySymbols[selectedCurrency];
+  // Sayfa ilk yüklendiğinde otomatik olarak hesaplama yap
+  useEffect(() => {
+    handleCalculate();
+  }, [handleCalculate]);
 
   return (
-    <div className="container mx-auto p-4 flex justify-center">
-      <Card className="w-full max-w-md p-4">
-        <CardHeader>
-            <h1 className="text-2xl font-bold text-center">Kredi Hesaplama Aracı</h1>
-        </CardHeader>
-        <CardBody className="flex flex-col gap-4">
-            <Select
-                label="Kredi Türü"
-                placeholder="Bir kredi türü seçin"
-                defaultSelectedKeys={["ihtiyac"]}
-            >
-                {loanTypes.map((type) => (
-                    <SelectItem key={type.key}>
-                        {type.label}
-                    </SelectItem>
-                ))}
-            </Select>
-
-            <div className="flex gap-2">
-                <Input
-                    type="number"
-                    label="Kredi Tutarı"
-                    placeholder="0.00"
-                    value={loanAmount}
-                    onValueChange={setLoanAmount}
-                    startContent={
-                        <Select
-                            size="sm"
-                            aria-label="Currency"
-                            selectedKeys={[selectedCurrency]}
-                            onChange={(e) => setSelectedCurrency(e.target.value)}
-                            className="w-24"
-                        >
-                            {currencies.map((currency) => (
-                                <SelectItem key={currency.key}>
-                                    {currency.label}
-                                </SelectItem>
-                            ))}
-                        </Select>
-                    }
-                />
-            </div>
-
+    <div className="container mx-auto p-4 md:p-8">
+      <Card className="mb-8 p-4">
+        <CardBody>
+          <div className="flex flex-col md:flex-row items-center gap-4">
             <Input
-                type="number"
-                label="Yıllık Faiz Oranı"
-                placeholder="0.00"
-                value={interestRate}
-                onValueChange={setInterestRate}
-                endContent={
-                    <div className="pointer-events-none flex items-center">
-                        <span className="text-default-400 text-small">%</span>
-                    </div>
-                }
-            />
-
-            <Input
-                type="number"
-                label="Vade (Yıl)"
-                placeholder="Örn: 5"
-                value={loanTerm}
-                onValueChange={setLoanTerm}
-            />
-
-            <Button color="primary" onClick={handleCalculate} size="lg">
-                Hesapla
-            </Button>
-
-            {monthlyPayment !== null && totalPayment !== null && (
-                <div className="mt-4 p-4 bg-default-100 rounded-lg">
-                    <h2 className="text-xl font-bold mb-2">Hesaplama Sonuçları</h2>
-                    <div className="flex justify-between">
-                        <p>Aylık Taksit:</p>
-                        <p className="font-semibold">{symbol}{monthlyPayment.toFixed(2)}</p>
-                    </div>
-                    <div className="flex justify-between mt-2">
-                        <p>Toplam Geri Ödeme:</p>
-                        <p className="font-semibold">{symbol}{totalPayment.toFixed(2)}</p>
-                    </div>
+              type="number"
+              label="İhtiyaç Kredisi Tutarı"
+              placeholder="Tutar girin"
+              value={loanAmount}
+              onValueChange={setLoanAmount}
+              labelPlacement="outside"
+              startContent={
+                <div className="pointer-events-none flex items-center">
+                  <span className="text-default-400 text-small">₺</span>
                 </div>
-            )}
+              }
+            />
+            <Select
+              label="Vade"
+              placeholder="Vade seçin"
+              selectedKeys={[loanTerm]}
+              onChange={(e) => setLoanTerm(e.target.value)}
+              labelPlacement="outside"
+              className="w-full md:w-64"
+            >
+              {loanTerms.map((term) => (
+                <SelectItem key={term.key}>
+                  {term.label}
+                </SelectItem>
+              ))}
+            </Select>
+            <Button color="primary" onClick={handleCalculate} size="lg" className="w-full md:w-auto">
+              Yeniden Hesapla
+            </Button>
+          </div>
         </CardBody>
       </Card>
+
+      <div>
+        <h2 className="text-2xl font-bold mb-4">{`${new Intl.NumberFormat('tr-TR').format(parseFloat(loanAmount))} TL ${loanTerm} Ay Vadeli İhtiyaç Kredileri`}</h2>
+        <div className="grid gap-4">
+          {calculatedResults.length > 0 ? (
+            calculatedResults.map((offer, index) => (
+              <Card key={index} className="p-4 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                  <div className="flex items-center gap-4 md:col-span-1">
+                    <div className="w-16 h-16 bg-default-200 rounded-md flex items-center justify-center">
+                       <span className="text-sm font-bold text-center">{offer.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-center md:text-left">
+                    <p className="text-sm text-default-500">Faiz Oranı</p>
+                    <p className="font-bold text-lg">{`%${offer.interestRate.toFixed(2)}`}</p>
+                  </div>
+
+                  <div className="text-center md:text-left">
+                    <p className="text-sm text-default-500">Aylık Taksit</p>
+                    <p className="font-bold text-lg">{`${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(offer.monthlyPayment)}`}</p>
+                  </div>
+
+                  <div className="text-center md:text-left">
+                    <p className="text-sm text-default-500">Toplam Ödeme</p>
+                    <p className="font-bold text-lg">{`${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(offer.totalPayment)}`}</p>
+                  </div>
+
+                  <div className="flex justify-center md:justify-end md:col-span-1">
+                    <Button as="a" href="#" color="primary" variant="solid">
+                      Hemen Başvur
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <p>Lütfen bir tutar ve vade girerek hesaplama yapın.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
